@@ -1,8 +1,9 @@
+import {cleanupEngine, setupEngine}                                                                                from '@yarnpkg/completion';
 import {Configuration, CommandContext, PluginConfiguration, TelemetryManager, semverUtils, miscUtils, YarnVersion} from '@yarnpkg/core';
 import {PortablePath, npath, ppath, xfs}                                                                           from '@yarnpkg/fslib';
 import {execFileSync}                                                                                              from 'child_process';
 import {isCI}                                                                                                      from 'ci-info';
-import {Cli, UsageError}                                                                                           from 'clipanion';
+import {Builtins, Cli, UsageError}                                                                                 from 'clipanion';
 
 import {pluginCommands}                                                                                            from './pluginCommands';
 
@@ -101,6 +102,29 @@ function initTelemetry(cli: Cli<CommandContext>, {configuration}: {configuration
 }
 
 function initCommands(cli: Cli<CommandContext>, {configuration}: {configuration: Configuration}) {
+  class CompletionSetupCommand extends Builtins.CompletionSetupCommand({completionProviderCommandPaths: []}) {
+    async execute() {
+      const binaryName = await setupEngine(configuration);
+
+      return await super.execute({binaryName});
+    }
+  }
+
+  class CompletionCleanupCommand extends Builtins.CompletionCleanupCommand({completionProviderCommandPaths: []}) {
+    async execute() {
+      const binaryName = await cleanupEngine(configuration);
+
+      return await super.execute({binaryName});
+    }
+  }
+
+
+  cli.register(CompletionSetupCommand);
+  cli.register(CompletionCleanupCommand);
+
+  cli.register(Builtins.CompletionRequestCommand);
+  cli.register(Builtins.CompletionDebugCommand);
+
   for (const plugin of configuration.plugins.values()) {
     for (const command of plugin.commands || []) {
       cli.register(command);
